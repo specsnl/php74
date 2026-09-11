@@ -2,10 +2,10 @@
 # check=error=true
 
 # Latest version of php-extension-installer: https://hub.docker.com/r/mlocati/php-extension-installer/tags
-FROM mlocati/php-extension-installer:2.11.12 AS php_extension_installer
+FROM {{ getenv "PHP_EXTENSION_INSTALLER_IMAGE" }} AS php_extension_installer
 
-# Latest version of PHP base image: https://hub.docker.com/_/php/tags
-FROM php:7.4.33-apache-bullseye AS runtime
+# Latest version of {{ .image_label }}: {{ .image_url }}
+FROM {{ getenv "BASE_IMAGE" }} AS runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -69,7 +69,7 @@ RUN --mount=type=bind,from=php_extension_installer,source=/usr/bin/install-php-e
 
 COPY files/general /
 
-FROM composer/composer:2.10.2-bin AS composer
+FROM {{ getenv "COMPOSER_IMAGE" }} AS composer
 
 FROM runtime AS builder
 
@@ -154,7 +154,7 @@ EOF
 COPY --from=composer /composer /usr/bin/composer
 
 # Latest version of node: https://hub.docker.com/_/node/tags
-FROM node:24.19.0-trixie-slim AS node
+FROM {{ getenv "NODE_IMAGE" }} AS node
 
 FROM builder AS builder_nodejs
 

@@ -1,20 +1,31 @@
 version: "3"
 
-silent: true
-
 vars:
   DOCKER_REPO: ghcr.io
-  DOCKER_OWNER: ilyes512
+  DOCKER_OWNER: specsnl
   # Latatest version of Hadolint: https://hub.docker.com/r/hadolint/hadolint/tags or https://github.com/hadolint/hadolint/releases
-  HADOLINT_TAG_VERSION: v2.12.0
+  HADOLINT_TAG_VERSION: v2.14.0
+  # Latest version of gomplate: https://hub.docker.com/r/hairyhenderson/gomplate/tags or https://github.com/hairyhenderson/gomplate/releases
+  GOMPLATE_TAG_VERSION: v5.1.0
+
+# env:
+#   BUILDKIT_PROGRESS: plain
+
+silent: true
 
 tasks:
 
   build:
-    desc: Build all PHP Docker image targets of both the FPM and Apache variants
+    desc: Build all PHP Docker image targets of the FPM and Apache
     cmds:
       - task: build:fpm
       - task: build:apache
+
+  lint:
+    desc: Apply a Dockerfile linter to all Dockerfiles
+    cmds:
+      - task: lint:fpm
+      - task: lint:apache
 
   build:fpm:
     desc: Build all PHP Docker image targets of the FPM variant
@@ -36,11 +47,6 @@ tasks:
       - task: build:target
         vars:
           TARGET: builder_nodejs
-          DOCKER_IMAGE_NAME: '{{.DOCKER_IMAGE_NAME}}'
-          DOCKER_FILE_PATH: '{{.DOCKER_FILE_PATH}}'
-      - task: build:target
-        vars:
-          TARGET: vscode
           DOCKER_IMAGE_NAME: '{{.DOCKER_IMAGE_NAME}}'
           DOCKER_FILE_PATH: '{{.DOCKER_FILE_PATH}}'
 
@@ -66,11 +72,6 @@ tasks:
           TARGET: builder_nodejs
           DOCKER_IMAGE_NAME: '{{.DOCKER_IMAGE_NAME}}'
           DOCKER_FILE_PATH: '{{.DOCKER_FILE_PATH}}'
-      - task: build:target
-        vars:
-          TARGET: vscode
-          DOCKER_IMAGE_NAME: '{{.DOCKER_IMAGE_NAME}}'
-          DOCKER_FILE_PATH: '{{.DOCKER_FILE_PATH}}'
 
   build:target:
     preconditions:
@@ -78,32 +79,78 @@ tasks:
           test '{{.TARGET}}' = 'runtime'
           -o '{{.TARGET}}' = 'builder'
           -o '{{.TARGET}}' = 'builder_nodejs'
-          -o '{{.TARGET}}' = 'vscode'
-        msg: TARGET needs to contain the Docker TARGET [runtime, builder, builder_nodejs, vscode]
+        msg: TARGET needs to contain the Docker TARGET [runtime, builder, builder_nodejs]
     vars:
       VERSION: '{{.VERSION | default "latest"}}'
+      TARGET_PATH: '{{if ne .TARGET "runtime"}}/{{.TARGET}}{{end}}'
     cmds:
       - docker build
         --target {{.TARGET}}
-        --tag {{.DOCKER_REPO}}/{{.DOCKER_OWNER}}/{{.DOCKER_IMAGE_NAME}}:{{.TARGET}}-{{.VERSION}}
+        --tag {{.DOCKER_REPO}}/{{.DOCKER_OWNER}}/{{.DOCKER_IMAGE_NAME}}{{.TARGET_PATH}}:{{.VERSION}}
         --file {{.DOCKER_FILE_PATH}}
         .
+    requires:
+      vars: [DOCKER_IMAGE_NAME, TARGET, DOCKER_FILE_PATH]
 
   lint:fpm:
     desc: Apply a Dockerfile linter (https://github.com/hadolint/hadolint)
     cmds:
-      - task: lint
+      - task: do:lint
         vars: { DOCKERFILE_PATH: fpm/Dockerfile }
 
   lint:apache:
     desc: Apply a Dockerfile linter (https://github.com/hadolint/hadolint)
     cmds:
-      - task: lint
+      - task: do:lint
         vars: { DOCKERFILE_PATH: apache/Dockerfile }
 
-  lint:
+  generate:
+    desc: Generate all Dockerfiles from Dockerfile.tmpl
+    cmds:
+      - task: generate:variant
+        vars: { VARIANT: fpm }
+      - task: generate:variant
+        vars: { VARIANT: apache }
+
+  generate:variant:
+    internal: true
     vars:
-      DOCKERFILE_PATH: '{{.DOCKERFILE_PATH}}'
+      BASE_IMAGE:
+        sh: awk '/^FROM .* AS runtime$/ { print $2; exit }' {{.VARIANT}}/Dockerfile
+      PHP_EXTENSION_INSTALLER_IMAGE:
+        sh: awk '/^FROM .* AS php_extension_installer$/ { print $2; exit }' {{.VARIANT}}/Dockerfile
+      COMPOSER_IMAGE:
+        sh: awk '/^FROM .* AS composer$/ { print $2; exit }' {{.VARIANT}}/Dockerfile
+      NODE_IMAGE:
+        sh: awk '/^FROM .* AS node$/ { print $2; exit }' {{.VARIANT}}/Dockerfile
+    cmds:
+      - docker run
+        --rm
+        --volume $(pwd)/Dockerfile.tmpl:/input/Dockerfile.tmpl:ro
+        --volume $(pwd)/variants/{{.VARIANT}}.yaml:/input/variant.yaml:ro
+        --env "BASE_IMAGE={{.BASE_IMAGE}}"
+        --env "PHP_EXTENSION_INSTALLER_IMAGE={{.PHP_EXTENSION_INSTALLER_IMAGE}}"
+        --env "COMPOSER_IMAGE={{.COMPOSER_IMAGE}}"
+        --env "NODE_IMAGE={{.NODE_IMAGE}}"
+        hairyhenderson/gomplate:{{.GOMPLATE_TAG_VERSION}}
+        --context .=file:///input/variant.yaml
+        --file /input/Dockerfile.tmpl
+        > {{.VARIANT}}/Dockerfile
+    requires:
+      vars: [VARIANT]
+
+  install:hooks:
+    desc: Install git hooks (pre-commit regenerates and stages Dockerfiles from template)
+    cmds:
+      - cp scripts/pre-commit .git/hooks/pre-commit
+
+  remove:hooks:
+    desc: Remove installed git hooks
+    cmds:
+      - rm -f .git/hooks/pre-commit
+
+  do:lint:
+    internal: true
     cmds:
       - docker run
         --interactive
@@ -113,6 +160,8 @@ tasks:
         hadolint
         -
         < {{.DOCKERFILE_PATH}}
+    requires:
+      vars: [DOCKERFILE_PATH]
 
   shell:fpm:
     desc: Interactive shell
@@ -124,7 +173,7 @@ tasks:
         --interactive
         --tty
         --rm
-        {{.DOCKER_REPO}}/{{.DOCKER_OWNER}}/{{.DOCKER_IMAGE_NAME}}:builder_nodejs-{{.VERSION | default "latest" }}
+        {{.DOCKER_REPO}}/{{.DOCKER_OWNER}}/{{.DOCKER_IMAGE_NAME}}/builder_nodejs:{{.VERSION | default "latest" }}
         bash
 
   shell:apache:
@@ -137,5 +186,5 @@ tasks:
         --interactive
         --tty
         --rm
-        {{.DOCKER_REPO}}/{{.DOCKER_OWNER}}/{{.DOCKER_IMAGE_NAME}}:builder_nodejs-{{.VERSION | default "latest" }}
+        {{.DOCKER_REPO}}/{{.DOCKER_OWNER}}/{{.DOCKER_IMAGE_NAME}}/builder_nodejs:{{.VERSION | default "latest" }}
         bash

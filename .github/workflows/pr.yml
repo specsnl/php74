@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   build:
-    uses: Ilyes512/github-actions/.github/workflows/build-php.yml@0.2.1
+    uses: Ilyes512/github-actions/.github/workflows/build-php.yml@2.1.0
     strategy:
       fail-fast: false
       matrix:

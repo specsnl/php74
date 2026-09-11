@@ -4,20 +4,38 @@
 version: 2
 updates:
   - package-ecosystem: docker
-    directory: "fpm"
+    directories:
+      - fpm
+      - apache
     schedule:
       interval: "daily"
+    labels:
+      - "docker"
     ignore:
-      - dependency-name: '*'
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-  - package-ecosystem: docker
-    directory: "apache"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: '*'
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "php"
+        update-types: ["version-update:semver-minor"]
+    groups:
+      php:
+        patterns:
+          - "php"
+      php-extension-installer:
+        patterns:
+          - "mlocati/php-extension-installer"
+      composer:
+        patterns:
+          - "composer/composer"
+      node:
+        patterns:
+          - "node"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
+    labels:
+      - "github-actions"
+    groups:
+      specsnl-github-actions:
+        patterns:
+          - "specsnl/github-actions*"

@@ -51,6 +51,7 @@ RUN --mount=type=bind,from=php_extension_installer,source=/usr/bin/install-php-e
         soap \
         xsl \
         sockets \
+        opcache \
         "event-$PHP_EVENT_VERSION" \
         "igbinary-$PHP_IGBINARY_VERSION" \
         "redis-$PHP_REDIS_VERSION" \

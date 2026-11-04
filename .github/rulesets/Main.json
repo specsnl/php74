@@ -53,19 +53,11 @@
                         "integration_id": 15368
                     },
                     {
-                        "context": "merge (ghcr.io/specsnl/php74) / builder_nodejs / Merge Images (builder_nodejs)",
-                        "integration_id": 15368
-                    },
-                    {
                         "context": "merge (ghcr.io/specsnl/php74/apache) / runtime / Merge Images (runtime)",
                         "integration_id": 15368
                     },
                     {
                         "context": "merge (ghcr.io/specsnl/php74/apache) / builder / Merge Images (builder)",
-                        "integration_id": 15368
-                    },
-                    {
-                        "context": "merge (ghcr.io/specsnl/php74/apache) / builder_nodejs / Merge Images (builder_nodejs)",
                         "integration_id": 15368
                     }
                 ]

@@ -29,14 +29,12 @@ ARG PHP_REDIS_VERSION=6.3.0
 # Latest version of amqp-extension: https://pecl.php.net/package/amqp
 ARG PHP_AMQP_VERSION=2.2.0
 
-ARG DEBIAN_SECURITY_SNAPSHOT=20260901T000000Z
-
 WORKDIR /var/www
 
 RUN --mount=type=bind,from=php_extension_installer,source=/usr/bin/install-php-extensions,target=/usr/local/bin/install-php-extensions \
     # Bullseye is EOL:
-    sed -i -E "s|^deb http://deb.debian.org/debian-security (.*)|deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/$DEBIAN_SECURITY_SNAPSHOT \1|" /etc/apt/sources.list \
-    && grep -q snapshot.debian.org /etc/apt/sources.list \
+    sed -i -E "s|^deb http://deb.debian.org/debian-security (.*)|deb http://archive.debian.org/debian-security \1|" /etc/apt/sources.list \
+    && grep -q archive.debian.org /etc/apt/sources.list \
     && apt-get update \
     && apt-get install --assume-yes --no-install-recommends \
         apt-transport-https \

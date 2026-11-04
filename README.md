@@ -10,27 +10,28 @@ A PHP 7.4 (FPM and Apache) based Docker base image.
 # FPM
 docker pull ghcr.io/specsnl/php74:latest
 docker pull ghcr.io/specsnl/php74/builder:latest
-docker pull ghcr.io/specsnl/php74/builder_nodejs:latest
 
 # Apache
 docker pull ghcr.io/specsnl/php74/apache:latest
 docker pull ghcr.io/specsnl/php74/apache/builder:latest
-docker pull ghcr.io/specsnl/php74/apache/builder_nodejs:latest
 ```
 
 The image name scheme: `ghcr.io/specsnl/php74[/{VARIANT}][/{TARGET}]:{VERSION}`
 
 - **{VARIANT}**: omitted for FPM, otherwise `apache`
-- **{TARGET}**: omitted for `runtime`, otherwise `builder` or `builder_nodejs` (also published as `node`)
+- **{TARGET}**: omitted for `runtime`, otherwise `builder`
 - **{VERSION}**: `latest`, a release tag (i.e. `0.5.5`), `main` or `pr-<number>`
+
+The `builder` image is also published under its old names, `builder_nodejs` and `node`, from the time Node.js had its own
+target. These names are deprecated and will be removed ([specsnl/github-actions#76](https://github.com/specsnl/github-actions/issues/76));
+use `builder` instead.
 
 ## Building the docker image(s)
 
 There are multiple targets:
 
   - **runtime**: this is for *production*. It does not contain any development tools like Composer and Xdebug.
-  - **builder**: this is for *development*. This is based on the runtime-target and it adds Composer, Xdebug etc.
-  - **builder_nodejs**: this is for *development*. This is based on the builder-target and it adds NodeJS.
+  - **builder**: this is for *development*. This is based on the runtime-target and it adds Composer, Xdebug, Node.js etc.
 
 Building `runtime`-target:
 
@@ -42,12 +43,6 @@ Building `builder`-target:
 
 ```
 docker build --tag ghcr.io/specsnl/php74/builder:latest --file fpm/Dockerfile --target builder .
-```
-
-Building `builder_nodejs`-target:
-
-```
-docker build --tag ghcr.io/specsnl/php74/builder_nodejs:latest --file fpm/Dockerfile --target builder_nodejs .
 ```
 
 ## Debian bullseye is EOL (`DEBIAN_SECURITY_SNAPSHOT`)
